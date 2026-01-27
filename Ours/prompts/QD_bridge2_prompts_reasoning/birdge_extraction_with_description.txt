@@ -1,0 +1,142 @@
+# Task Description
+You are an expert in multi-hop question understanding.  
+Your task is to extract **1–2 atomic factual bridge questions** from a complex multi-hop question,  
+and produce structured descriptions that explain their role in the reasoning chain.  
+These atomic questions stabilize early-hop retrieval and must be answerable by a single KG triple.
+
+------------------------------------------------------------
+# Reasoning (Follow these steps internally before producing output)
+
+1. Identify Candidate Noun Phrases
+   - Scan the question and extract all noun phrases **verbatim**, including full relative clauses.
+   - These must be standalone entities that the question depends on.
+
+2. Select Early-Hop Anchors
+   - Among the extracted noun phrases, choose the **earliest** entities that the rest of the question logically depends on.
+   - Prefer those that can serve as **starting points** for the reasoning chain.
+
+3. Convert into Atomic Bridge Questions
+   - Rewrite each selected noun phrase as a minimal factual question.
+   - The question must be answerable by **one KG triple**.
+   - Begin with “Who / What / Which”.
+
+4. Generate Descriptions
+   For each bridge question:
+   - **Info_obtained**: describe the type of information retrieved using only verbatim noun phrases.
+   - **Role_in_chain**: explain how this information anchors the reasoning chain.
+   - **Remaining_subproblems**: list unresolved reasoning steps using only phrases that appear in the original question.
+
+5. Verify Constraints
+   - No paraphrasing of noun phrases.
+   - No invented entities or inferred facts.
+   - No chain-of-thought in the output.
+   - JSON structure must match exactly.
+
+------------------------------------------------------------
+# Output Format (STRICT)
+
+You MUST return **exactly one** valid JSON object.
+
+{
+  "bridge_questions": [
+    "..."
+  ],
+  "descriptions": [
+    {
+      "Info_obtained": "...",
+      "Role_in_chain": "...",
+      "Remaining_subproblems": [
+        "..."
+      ]
+    }
+  ]
+}
+
+------------------------------------------------------------
+# FEW-SHOT EXAMPLES
+
+## Example 1
+Input Question: "What dissolved the privileges in Poland of the empire that the British sided with against the Ottomans, the Kingdom that acquired some Thuringian territory in 1815, and the Habsburg Monarchy?"
+
+Output:
+{
+  "bridge_questions": [
+    "What empire did the British side with against the Ottomans?",
+    "Which Kingdom acquired some Thuringian territory in 1815?"
+  ],
+  "descriptions": [
+    {
+      "Info_obtained": "the empire that the British sided with against the Ottomans",
+      "Role_in_chain": "This empire defines one item in the list of entities whose privileges in Poland were dissolved.",
+      "Remaining_subproblems": [
+        "Identify the remaining entities in the list.",
+        "Determine what dissolved their privileges in Poland."
+      ]
+    },
+    {
+      "Info_obtained": "the Kingdom that acquired some Thuringian territory in 1815",
+      "Role_in_chain": "This Kingdom defines another entity in the list whose privileges in Poland were dissolved.",
+      "Remaining_subproblems": [
+        "Consider the Habsburg Monarchy in the list.",
+        "Determine what dissolved the privileges of these entities in Poland."
+      ]
+    }
+  ]
+}
+
+## Example 2
+Input Question: "When was Burma's name changed to that of the country on the natural boundary between the country that hosted the tournament and the country where That Dam is from?"
+
+Output:
+{
+  "bridge_questions": [
+    "What country hosted the tournament?",
+    "What country is That Dam from?"
+  ],
+  "descriptions": [
+    {
+      "Info_obtained": "the country that hosted the tournament",
+      "Role_in_chain": "This country defines one endpoint of 'the natural boundary between the country that hosted the tournament and the country where That Dam is from'.",
+      "Remaining_subproblems": [
+        "Identify the other endpoint country in the natural boundary.",
+        "Use this boundary to identify the country to which Burma's name was changed.",
+        "Determine when the name change occurred."
+      ]
+    },
+    {
+      "Info_obtained": "the country where That Dam is from",
+      "Role_in_chain": "This country forms the other endpoint of 'the natural boundary between the country that hosted the tournament and the country where That Dam is from'.",
+      "Remaining_subproblems": [
+        "Identify the country that hosted the tournament.",
+        "Use this natural boundary to identify the country to which Burma's name was changed.",
+        "Determine when the name change occurred."
+      ]
+    }
+  ]
+}
+```
+
+## Example 3
+Input Question: "What season was the performer of Blue Skies on?"
+
+Output:
+{
+  "bridge_questions": [
+    "Who is the performer of Blue Skies?"
+  ],
+  "descriptions": [
+    {
+      "Info_obtained": "the performer of Blue Skies",
+      "Role_in_chain": "This performer is required to interpret 'the season the performer of Blue Skies was on'.",
+      "Remaining_subproblems": [
+        "Determine what season this performer was on."
+      ]
+    }
+  ]
+}
+
+## Now your turn
+
+Question: <<ORIGINAL_QUERY>>
+
+Return JSON only.

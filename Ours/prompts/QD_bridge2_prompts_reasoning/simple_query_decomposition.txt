@@ -1,0 +1,180 @@
+# Instruction
+You are an expert decomposition agent for multi-hop factual reasoning.
+
+Your task:
+Using the **atomic bundle**, **descriptions**, **retrieved triples**, and the **original query**,  
+produce the **simplest ordered list of factual sub-questions** that reconstruct the reasoning path.
+
+You must:
+1. Resolve ambiguous entities using atomic questions + retrieved triples.
+2. Create a **reduced query** by replacing complex noun phrases with resolved concrete entities.
+3. Decompose the **reduced query** into a short chain of increasingly specific factual sub-questions  
+   (Q1 < Q2 < ...), where the final sub-question must match the meaning of the reduced query.
+4. Use only verbatim **noun phrases** from:
+   - the original query, or  
+   - **grounded entities** obtained directly from retrieved triples.  
+   (Grounded entities are allowed and are *not* considered new entities.)
+5. Do NOT introduce new entities beyond grounded entities, and do NOT reuse atomic bridge questions.
+6. Atomic bridge questions may be used internally for grounding, but must never appear  
+   verbatim or partially inside the final sub-questions.
+
+Sub-questions must be:
+- minimal, factual, and simple  
+- aligned with triple-style relations (but not required to map 1:1 to a single triple)  
+- phrased in any simple sentence structure, as long as core noun phrases remain verbatim
+
+# Output Format (Strict)
+
+Return only the following JSON object:
+
+{
+  "sub_questions": [
+    "<sub-question 1>",
+    "<sub-question 2>",
+    "<sub-question 3>"
+  ]
+}
+------------------------------------------------------------
+# Reasoning (internal)
+
+1. **Identify target meaning**  
+   - Determine the fundamental ask of the original query.
+
+2. **Resolve atomic pivots using triples**  
+   - Use the atomic `Info_obtained` and select only the *necessary* retrieved triples  
+     to resolve ambiguous or nested noun phrases (e.g., “the publisher of X”).  
+   - Ignore triples unrelated to fulfilling atomic descriptions.  
+   - The goal: obtain the **grounded pivot entity** for this query.
+
+3. **Construct the reduced query**  
+   - Replace complex phrases in the original query with the resolved atomic pivot(s).  
+   - Remove unnecessary nesting and produce the **simplest equivalent factual question**.
+
+4. **Generate the sub-question chain (Q1 < Q2 < ...)**  
+   - Q1: simplest precursor needed to address the reduced query.  
+   - Subsequent steps increase specificity and end with the reduced query.  
+   - Use only verbatim entities from:
+     - the original query, or  
+     - grounded pivot entities from step 2.  
+   - Never use downstream answer entities that appear only as triple tails.
+
+5. **Validate**  
+   - No new or paraphrased entities.  
+   - No reuse of atomic bridge questions.  
+   - Each sub-question must be minimal, factual, and follow the dependency path.  
+   - The final sub-question must match the meaning of the reduced query.
+
+# FEW-SHOT EXAMPLES
+
+## Example 1 (2-hop chain)
+
+# Context bundle (atomic questions, descriptions, triples)
+{
+  "question": "In which country is the headquarters of the publisher of Bamboo Among the Oaks located?",
+  "atomic_bridge_questions": [
+    {
+      "question": "Who is the publisher of Bamboo Among the Oaks?",
+      "description": "This publisher is necessary to identify the headquarters location and its country.",
+      "info_gain": "the publisher of Bamboo Among the Oaks",
+      "follow_up": [
+        "Determine the headquarters city of this publisher.",
+        "Determine the country where this headquarters city is located."
+      ]
+    }
+  ],
+  "bridge_triples": [
+    ["Bamboo Among the Oaks", "is published by", "Minnesota Historical Society Press"],
+    ["Minnesota Historical Society Press", "headquarters location", "St. Paul, Minnesota"],
+    ["St. Paul, Minnesota", "is located in country", "United States"],
+    ["life at the top", "first published by", "Houghton Mifflin Co"],
+    ["out of the ashes", "published in", "2011"]
+  ]
+}
+
+# Original query
+In which country is the headquarters of the publisher of Bamboo Among the Oaks located?
+
+# Output
+{
+  "sub_questions": [
+    "What is the headquarters of Minnesota Historical Society Press?",
+    "In which country is the headquarters of Minnesota Historical Society Press located?"
+  ]
+}
+
+------------------------------------------------------------
+## Example 2 (1-hop chain after simplification)
+
+# Context bundle (atomic questions, descriptions, triples)
+{
+  "question": "Who has the most hits in the history of the organization that includes the team Jim Wilson was released by?",
+  "atomic_bridge_questions": [
+    {
+      "question": "What organization includes the team Jim Wilson was released by?",
+      "description": "This organization is necessary to identify the context in which to determine who has the most hits in its history.",
+      "info_gain": "the organization that includes the team Jim Wilson was released by",
+      "follow_up": [
+        "Identify who has the most hits in the history of this organization."
+      ]
+    }
+  ],
+  "bridge_triples": [
+    ["Jim Wilson", "was released by", "Cleveland Indians"],
+    ["Cleveland Indians", "are a member of", "Major League Baseball"],
+    ["Major League Baseball", "career_hits_leader", "Pete Rose"],
+    ["Jim Wilson", "played for", "Seattle Mariners"],
+    ["Jim Wilson", "toured with", "Minnesota Twins"]
+  ]
+}
+
+# Original query
+Who has the most hits in the history of the organization that includes the team Jim Wilson was released by?
+
+# Output
+{
+  "sub_questions": [
+    "Who has the most hits in the history of Major League Baseball?"
+  ]
+}
+
+------------------------------------------------------------
+## Example 3 (1-hop chain after simplification)
+
+# Context bundle (atomic questions, descriptions, triples)
+{
+  "question": "What two dialects does the /u/ remaining distinct in this form of Catalan include?",
+  "atomic_bridge_questions": [
+    {
+      "question": "What form of Catalan is being referred to?",
+      "description": "This form of Catalan is necessary to identify the specific dialects that remain distinct within it.",
+      "info_gain": "the form of Catalan",
+      "follow_up": [
+        "Identify the two dialects that remain distinct in this form of Catalan."
+      ]
+    }
+  ],
+  "bridge_triples": [
+    ["this form of Catalan", "is", "Western Catalan"],
+    ["Western Catalan", "comprises", "Northwestern Catalan"],
+    ["Western Catalan", "comprises", "Valencian"],
+    ["Eastern Catalan", "is a variant of", "Catalan"],
+    ["various forms of Catalan", "are mutually intelligible with", "Valencian"]
+  ]
+}
+
+# Original query
+What two dialects does the /u/ remaining distinct in this form of Catalan include?
+
+# Output
+{
+  "sub_questions": [
+    "What two dialects does Western Catalan include?"
+  ]
+}
+
+
+# Context bundle (atomic questions, descriptions, triples)
+<<ATOMIC_AND_TRIPLES>>
+
+# Original query
+<<ORIGINAL_QUERY>>

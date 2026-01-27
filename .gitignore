@@ -21,3 +21,16 @@ data/
 clear_outputs_and_logs.sh
 # Ignore the env file
 .env
+
+# Ignore large data files in Ours/
+Ours/_hippo_rag_MHQA_CL/
+Ours/**/*.parquet
+Ours/**/*.sqlite
+Ours/**/*.sqlite.lock
+Ours/**/*.pickle
+Ours/**/llm_cache/
+Ours/**/chunk_embeddings/
+Ours/**/entity_embeddings/
+Ours/**/fact_embeddings/
+Ours/**/graph.pickle
+Ours/**/openie_results_*.json
