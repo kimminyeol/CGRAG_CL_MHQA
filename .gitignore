@@ -23,7 +23,8 @@ clear_outputs_and_logs.sh
 .env
 
 # Ignore large data files in Ours/
-Ours/_hippo_rag_MHQA_CL/
+Ours/_hippo_rag_MHQA_CL/*
+!Ours/_hippo_rag_MHQA_CL/Create_embedding_graph.ipynb
 Ours/**/*.parquet
 Ours/**/*.sqlite
 Ours/**/*.sqlite.lock
